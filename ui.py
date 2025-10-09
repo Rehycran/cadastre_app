@@ -47,7 +47,7 @@ class App:
         self._contour = True
         self._contour_var = BooleanVar(value=self._contour)
         self._contour_var.trace_add("write", lambda *a: setattr(self, "_contour", self._contour_var.get()))
-        self.calculated_pts = StringVar(value= f"  ( {((self.distance_var.get()*2)//self.distance_pas.get()+2)**2} points à créer)")
+        self.calculated_pts = StringVar(value= f"  ( {((self.distance_var.get()*2)//self.distance_pas.get()+2)**2 if self._contour else "-"} points à créer)")
         self.msg_queue = queue.Queue()
         self._candidates = []
         self._selected_addr = None
