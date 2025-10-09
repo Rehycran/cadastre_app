@@ -146,7 +146,7 @@ class App:
         dl_contour_txt = Label(checkbox_frame, text="Télécharger les points altimétriques : ", name="dl_contour", font=TEXT_FONT)
         dl_contour_txt.pack(side="left")
         
-        chk = Checkbutton(checkbox_frame,variable=self._contour_var)
+        chk = Checkbutton(checkbox_frame,variable=self._contour_var, command=self.update_pt_nb)
         chk.pack(side="left")
         
         pas_frame = Frame(self.root, bg=self.root["bg"])
