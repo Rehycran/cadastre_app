@@ -11,3 +11,6 @@
 .venv/
 env/
 venv/
+build/
+dist/
+*.spec
