@@ -70,3 +70,4 @@ EMPTY_ALTI = gpd.GeoDataFrame(columns=["geometry", "elevations"], geometry="geom
 TEXT_FONT = ("Futura PT Demi", 14)
 BUTTON_FONT = ("Futura PT Bold", 14)
 ENTRY_FONT = ("Futura PT Book", 12)
+INFO_FONT = ("Futura PT Light",9)

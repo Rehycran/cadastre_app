@@ -28,7 +28,7 @@ import geopandas as gpd
 from pyproj import Transformer
 from shapely.geometry import box
 
-from .config import TEXT_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS_2154, DEFAULT_STEP, EMPTY_ALTI
+from .config import TEXT_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS_2154, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT
 from .geocode import geocode, Address
 from .wfs import fetch_buildings, fetch_parcelles, fetch_alti
 from .crsmap import epsg_from_postcode
@@ -173,6 +173,9 @@ class App:
         bouton_v = Button(r, text="Valider", command=self._go, font=BUTTON_FONT)
         bouton_v.grid(row=6, column=0, pady=(35,12), sticky="ne", padx=100)
         self.entree.bind("<Return>", lambda event: (bouton_v.invoke() if self.entree.get() else None))
+        
+        licence = Label(r,text= "Données issues des dernières mises à jours disponibles sur la Géoplateforme – Licence Ouverte 2.0", font=INFO_FONT,fg="gray35")
+        licence.grid(row=7,column=0,sticky="sw")
 
     # -------- helpers --------
     def meters_bbox_around_lonlat(self, lon, lat, meters, to_metric_crs=DEFAULT_CRS_2154):
