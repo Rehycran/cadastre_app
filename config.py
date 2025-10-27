@@ -4,7 +4,7 @@ import geopandas as gpd
 
 WFS_URL = "https://data.geopf.fr/wfs/ows"
 LAYER_BUILDINGS = "BDTOPO_V3:batiment"
-LAYER_PARCELLES = "BDPARCELLAIRE-VECTEUR_WLD_BDD_WGS84G:parcelle"
+LAYER_PARCELLES = "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle"
 ALTI_URL = "https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json"
 
 DEPT_TO_CC = {
