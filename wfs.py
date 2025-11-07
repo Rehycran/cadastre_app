@@ -1,8 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import requests
-from typing import Tuple, List
-from .config import WFS_URL, DEFAULT_CRS_2154, USER_AGENT, TIMEOUT, LAYER_BUILDINGS, LAYER_PARCELLES, ALTI_URL
+from .config import WFS_URL, DEFAULT_CRS, USER_AGENT, TIMEOUT, LAYER_BUILDINGS, LAYER_PARCELLES, ALTI_URL
 import math
 import time
 
@@ -14,14 +13,19 @@ def _wfs_get_json(params: dict):
     r.raise_for_status()
     return r.json()
 
-def fetch_layer(layer_name: str, bbox: Tuple[float,float,float,float], crs=DEFAULT_CRS_2154, max_per_page=5000):
-    start = 0; frames=[]
+def fetch_layer(layer_name: str, bbox: tuple[float,float,float,float], max_per_page=5000):
+    start = 0; 
+    frames=[]
     while True:
         params = {
-            "service":"WFS","version":"2.0.0","request":"GetFeature",
-            "typenames":layer_name,"count":max_per_page,"startIndex":start,
-            "srsName":crs,"outputFormat":"application/json",
-            "bbox":",".join(f"{v:.3f}" for v in bbox)+f",{crs}"
+            "service":"WFS",
+            "version":"2.0.0",
+            "request":"GetFeature",
+            "typenames":layer_name,
+            "count":max_per_page,
+            "startIndex":start,
+            "outputFormat":"application/json",
+            "bbox":",".join(f"{v:.3f}" for v in bbox)
         }
         data = _wfs_get_json(params)
         feats = data.get("features", [])
@@ -32,7 +36,7 @@ def fetch_layer(layer_name: str, bbox: Tuple[float,float,float,float], crs=DEFAU
         start += max_per_page
     return gpd.pd.concat(frames, ignore_index=True) if frames else gpd.GeoDataFrame(geometry=[], crs=crs)
 
-def fetch_buildings(bbox, crs=DEFAULT_CRS_2154, max_per_page=5000):
+def fetch_buildings(bbox, crs=DEFAULT_CRS, max_per_page=5000):
     out = fetch_layer(LAYER_BUILDINGS, bbox, crs, max_per_page)
     
     if out.empty:
@@ -58,10 +62,11 @@ def fetch_buildings(bbox, crs=DEFAULT_CRS_2154, max_per_page=5000):
     
     return out[["geometry","hauteur", "altitude_maximale_toit", "altitude_minimale_toit"]]
 
-def fetch_parcelles(bbox, crs=DEFAULT_CRS_2154, max_per_page=5000):
+def fetch_parcelles(bbox, crs=DEFAULT_CRS, max_per_page=5000):
     out = fetch_layer(LAYER_PARCELLES, bbox, crs, max_per_page)
     return out[["geometry"]] if not out.empty else gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=crs)
 
+#------Il faut essayer d'appeler ign_lidar_hd_mnt_mono_wld avant la rge alti mais d'abord voir si la zone est couverte ! 
 def fetch_alti(addr, distance_m = 200, pas_metre = 5) :
     last_request_time = 0
     min_interval = 5

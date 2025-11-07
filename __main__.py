@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from cadastre_app.ui import App
+from .uiCTk import App
 
 def main():
     App().run()

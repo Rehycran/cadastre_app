@@ -1,9 +1,9 @@
 import re
 import requests
-from .config import USER_AGENT, TIMEOUT, CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS_2154
+from .config import USER_AGENT, TIMEOUT, CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
 
 
-def epsg_from_postcode(postcode: str, fallback: str = DEFAULT_CRS_2154) -> str:
+def epsg_from_postcode(postcode: str, fallback: str = DEFAULT_CRS) -> str:
 
     if not postcode or len(postcode) < 2:
         return fallback

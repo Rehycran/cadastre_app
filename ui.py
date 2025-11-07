@@ -21,14 +21,15 @@ from pathlib import Path
 import re
 import threading
 import queue
-from tkinter import Tk, Toplevel, Label, Button, Entry, StringVar, IntVar, filedialog, Frame, BooleanVar, Checkbutton
-from tkinter import ttk
+from tkinter import StringVar, IntVar, filedialog, BooleanVar, Checkbutton
+
+from customtkinter import CTk, CTkToplevel, CTkLabel, CTkButton, CTkEntry, CTkFrame, CTkProgressBar, CTkComboBox, CTkSlider
 
 import geopandas as gpd
 from pyproj import Transformer
 from shapely.geometry import box
 
-from .config import TEXT_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS_2154, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT
+from .config import TEXT_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT
 from .geocode import geocode, Address
 from .wfs import fetch_buildings, fetch_parcelles, fetch_alti
 from .crsmap import epsg_from_postcode
@@ -37,7 +38,7 @@ from .dxfwriter import write_dxf_two_layers
 
 class App:
     def __init__(self):
-        self.root = Tk()
+        self.root = CTk()
         self.root.title("Import parcelle et bati")
         self.distance_var = IntVar(value=20)
         self.distance_pas = IntVar(value=5)
@@ -72,13 +73,6 @@ class App:
         self.root.geometry(f"{ww}x{wh}+{x}+{y}")
         self.screen_w, self.screen_h = sw, sh
 
-        # ttk theme for more consistent look
-        try:
-            style = ttk.Style()
-            if "clam" in style.theme_names():
-                style.theme_use("clam")
-        except Exception:
-            pass
         
     def update_pt_nb(self, *args):
         try:
@@ -96,10 +90,10 @@ class App:
             r.rowconfigure(i, weight=1 if i < 4 else 5)
         r.columnconfigure(0, weight=1)
 
-        champ = Label(r, text=" Entrez l'adresse à rechercher :  ", name="champ", font=TEXT_FONT)
+        champ = CTkLabel(r, text=" Entrez l'adresse à rechercher :  ",  font=TEXT_FONT)
         champ.grid(row=0, column=0, padx=8, pady=8, sticky="w")
 
-        self.entree = Entry(r, name="entree", textvariable=self.manual_val, font=ENTRY_FONT)
+        self.entree = CTkEntry(r, textvariable=self.manual_val, font=ENTRY_FONT)
         self.entree.grid(row=1, column=0, sticky="new", padx=8)
         
         def _invalidate_if_changed(_evt=None):
@@ -108,14 +102,14 @@ class App:
         self.entree.bind("<KeyRelease>", _invalidate_if_changed)
 
 
-        text_distance = Label(
+        text_distance = CTkLabel(
             r,
             text="Rayon à prendre en compte autour de l'adresse : ",
             font=TEXT_FONT,
         )
         text_distance.grid(row=2, column=0, padx=8, sticky="w")
 
-        slider_frame = Frame(self.root, bg=self.root["bg"])
+        slider_frame = CTkFrame(self.root, bg=self.root["bg"])
         slider_frame.grid(row=3, column=0, padx=8, sticky="we")
         slider_frame.columnconfigure(0, weight=1)
         
@@ -129,56 +123,56 @@ class App:
             self.distance_var.set(v)
         
 
-        curseur_distance = ttk.Scale(
+        curseur_distance = CTkSlider(
             slider_frame, from_=20, to=1000, command=integer_callback, variable=self.distance_var
         )
         curseur_distance.grid(row=0, column=0, sticky="we", padx=(8, 6))
 
-        valeur_distance = Entry(slider_frame, textvariable=self.distance_var, font=ENTRY_FONT, width=5)
+        valeur_distance = CTkEntry(slider_frame, textvariable=self.distance_var, font=ENTRY_FONT, width=5)
         valeur_distance.grid(row=0, column=1, sticky="e")
 
-        Label(slider_frame, text=" m").grid(row=0, column=2, sticky="w", padx=4)
+        CTkLabel(slider_frame, text=" m").grid(row=0, column=2, sticky="w", padx=4)
 
-        checkbox_frame = Frame(self.root, bg=self.root["bg"])
+        checkbox_frame = CTkFrame(self.root, bg=self.root["bg"])
         checkbox_frame.grid(row=4, column=0, padx=8, sticky="we",pady=(35,0))
         checkbox_frame.columnconfigure(0, weight=1)
         
-        dl_contour_txt = Label(checkbox_frame, text="Télécharger les points altimétriques : ", name="dl_contour", font=TEXT_FONT)
+        dl_contour_txt = CTkLabel(checkbox_frame, text="Télécharger les points altimétriques : ", font=TEXT_FONT)
         dl_contour_txt.pack(side="left")
         
         chk = Checkbutton(checkbox_frame,variable=self._contour_var, command=self.update_pt_nb)
         chk.pack(side="left")
         
-        pas_frame = Frame(self.root, bg=self.root["bg"])
+        pas_frame = CTkFrame(self.root, bg=self.root["bg"])
         pas_frame.grid(row=5, column=0, padx=8, sticky="we")
         pas_frame.columnconfigure(0, weight=1)
         
-        pas_text_01 = Label(pas_frame, text="Un point tous les ", name="pas_text_01", font=TEXT_FONT)
+        pas_text_01 = CTkLabel(pas_frame, text="Un point tous les ", font=TEXT_FONT)
         pas_text_01.pack(side="left")
         
-        valeur_pas = Entry(pas_frame, textvariable=self.distance_pas, font=ENTRY_FONT, width=2)
+        valeur_pas = CTkEntry(pas_frame, textvariable=self.distance_pas, font=ENTRY_FONT, width=2)
         valeur_pas.pack(side="left")
         
 
         
-        pas_text_02 = Label(pas_frame, text="mètre(s)", name="pas_text_02", font=TEXT_FONT)
+        pas_text_02 = CTkLabel(pas_frame, text="mètre(s)", font=TEXT_FONT)
         pas_text_02.pack(side="left")
         
-        pas_text_03 = Label(pas_frame, textvariable=self.calculated_pts, name="pas_text_03", font=ENTRY_FONT)
+        pas_text_03 = CTkLabel(pas_frame, textvariable=self.calculated_pts, font=ENTRY_FONT)
         pas_text_03.pack(side="left")
 
         self.distance_var.trace_add("write", self.update_pt_nb)
         self.distance_pas.trace_add("write", self.update_pt_nb)
         
-        bouton_v = Button(r, text="Valider", command=self._go, font=BUTTON_FONT)
+        bouton_v = CTkButton(r, text="Valider", command=self._go, font=BUTTON_FONT)
         bouton_v.grid(row=6, column=0, pady=(35,12), sticky="ne", padx=100)
         self.entree.bind("<Return>", lambda event: (bouton_v.invoke() if self.entree.get() else None))
         
-        licence = Label(r,text= "Données issues des dernières mises à jours disponibles sur la Géoplateforme – Licence Ouverte 2.0", font=INFO_FONT,fg="gray35")
+        licence = CTkLabel(r,text= "Données issues des dernières mises à jours disponibles sur la Géoplateforme – Licence Ouverte 2.0", font=INFO_FONT,fg="gray35")
         licence.grid(row=7,column=0,sticky="sw")
 
     # -------- helpers --------
-    def meters_bbox_around_lonlat(self, lon, lat, meters, to_metric_crs=DEFAULT_CRS_2154):
+    def meters_bbox_around_lonlat(self, lon, lat, meters, to_metric_crs=DEFAULT_CRS):
         """Transform WGS84 lon/lat to metric CRS and expand a square bbox by `meters` in each direction."""
         t = Transformer.from_crs("EPSG:4326", to_metric_crs, always_xy=True)
         x, y = t.transform(lon, lat)
@@ -191,7 +185,7 @@ class App:
         return folder or None
 
     def prompt_after_save(self, out_path):
-        win = Toplevel(self.root)
+        win = CTkToplevel(self.root)
         win.title("Export DXF")
         win.transient(self.root)
         win.grab_set()
@@ -199,9 +193,9 @@ class App:
         x = (self.screen_w - w) // 2
         y = (self.screen_h - h) // 2
         win.geometry(f"{w}x{h}+{x}+{y}")
-        Label(win, text="Fichier créé avec succès", font=TEXT_FONT).pack(padx=16, pady=(18, 6))
-        Label(win, text=os.path.basename(out_path), font=ENTRY_FONT).pack(padx=16, pady=(0, 12))
-        btns = ttk.Frame(win)
+        CTkLabel(win, text="Fichier créé avec succès", font=TEXT_FONT).pack(padx=16, pady=(18, 6))
+        CTkLabel(win, text=os.path.basename(out_path), font=ENTRY_FONT).pack(padx=16, pady=(0, 12))
+        btns = CTkFrame(win)
         btns.pack(padx=16, pady=12, fill="x")
 
         def quitter():
@@ -219,31 +213,29 @@ class App:
             if folder_path.exists():
                 os.startfile(str(folder_path))
 
-        Button(btns, text="Continuer", command=continuer, font=BUTTON_FONT).pack(
+        CTkButton(btns, text="Continuer", command=continuer, font=BUTTON_FONT).pack(
             side="left", expand=True, fill="x", padx=0
         )
-        Button(btns, text="Ouv. dossier", command=lambda p=out_path: open_folder(p), font=BUTTON_FONT).pack(
+        CTkButton(btns, text="Ouv. dossier", command=lambda p=out_path: open_folder(p), font=BUTTON_FONT).pack(
             side="left", expand=True, fill="x", padx=12
         )
-        Button(btns, text="Quitter", command=quitter, font=BUTTON_FONT).pack(
+        CTkButton(btns, text="Quitter", command=quitter, font=BUTTON_FONT).pack(
             side="left", expand=True, fill="x", padx=0
         )
 
     def _progress_window(self):
-        w = Toplevel(self.root)
+        w = CTkToplevel(self.root)
         w.overrideredirect(True)
         ww = max(360, self.screen_w // 6)
         wh = 120
         x = (self.screen_w - ww) // 2
         y = (self.screen_h - wh) // 2
         w.geometry(f"{ww}x{wh}+{x}+{y}")
-        customstyle = ttk.Style()
-        customstyle.configure("cad.Progress.TFrame", background="black")
-        frame = ttk.Frame(w, padding=4, style="cad.Progress.TFrame")
+        frame = CTkFrame(w, padding=4, style="cad.Progress.TFrame")
         frame.pack(fill="both", expand=True)
-        bar = ttk.Progressbar(frame, orient="horizontal", mode="indeterminate")
+        bar = CTkProgressBar(frame, orient="horizontal", mode="indeterminate")
         bar.place(rely=0.5, relheight=0.5, relwidth=1.0)
-        label = Label(frame, text="Connexion WFS …", font=TEXT_FONT, bg="grey")
+        label = CTkLabel(frame, text="Connexion WFS …", font=TEXT_FONT, bg="grey")
         label.place(relheight=0.5, relwidth=1.0)
         return w, bar, label
 
@@ -260,15 +252,15 @@ class App:
         def worker():
             try:
                 # 1) bbox in EPSG:2154 (meters)
-                bbox_2154 = self.meters_bbox_around_lonlat(addr.lon, addr.lat, self.distance_var.get(), DEFAULT_CRS_2154)
+                bbox_2154 = self.meters_bbox_around_lonlat(addr.lon, addr.lat, self.distance_var.get(), DEFAULT_CRS)
                 minx, miny, maxx, maxy = bbox_2154
                 bbox_poly = box(minx, miny, maxx, maxy)
 
                 # 2) fetch layers
                 update_label("Récupération des bâtiments …")
-                gdf_b = fetch_buildings(bbox_2154, crs=DEFAULT_CRS_2154, max_per_page=5000)
+                gdf_b = fetch_buildings(bbox_2154, crs=DEFAULT_CRS, max_per_page=5000)
                 update_label("Récupération des parcelles …")
-                gdf_p = fetch_parcelles(bbox_2154, crs=DEFAULT_CRS_2154, max_per_page=5000)
+                gdf_p = fetch_parcelles(bbox_2154, crs=DEFAULT_CRS, max_per_page=5000)
 
                 # 3) target EPSG from postcode
                 target_epsg = epsg_from_postcode(addr.postcode)
@@ -377,29 +369,29 @@ class App:
             if int(info.get("row", -1)) >= 0:
                 child.grid_forget()
                 
-        wrapper = Frame(self.root, bg=self.root["bg"])
+        wrapper = CTkFrame(self.root, bg=self.root["bg"])
         wrapper.grid(row=0, column=0, sticky="nsew", padx=0, pady=20)
         wrapper.columnconfigure(0, weight=1)
 
-        Label(wrapper, text="Sélectionnez l'adresse dans la liste:", font=TEXT_FONT).grid(
+        CTkLabel(wrapper, text="Sélectionnez l'adresse dans la liste:", font=TEXT_FONT).grid(
             row=1, column=0, padx=8, pady=8, sticky="w"
         )
-        cb = ttk.Combobox(wrapper, values=labels, font=ENTRY_FONT)
+        cb = CTkComboBox(wrapper, values=labels, font=ENTRY_FONT)
         cb.grid(row=2, column=0, padx=8, sticky="new")
         cb.bind("<<ComboboxSelected>>", lambda e: self.entree.delete(0, "end"))
 
-        Button(
+        CTkButton(
             wrapper, text="Valider", command=lambda: self._use_choice(cb.get()), font=BUTTON_FONT
         ).grid(row=3, column=0, pady=8, sticky="ne", padx=100)
         
-        Label(wrapper, text="Ou faites une nouvelle recherche :", font=TEXT_FONT).grid(
+        CTkLabel(wrapper, text="Ou faites une nouvelle recherche :", font=TEXT_FONT).grid(
             row=4, column=0, padx=8, pady=8, sticky="w"
         )
         
-        self.entree = Entry(wrapper, name="entree", textvariable=self.manual_val, font=ENTRY_FONT)
+        self.entree = CTkEntry(wrapper, textvariable=self.manual_val, font=ENTRY_FONT)
         self.entree.grid(row=5, column=0, sticky="new", padx=8)
         
-        Button(
+        CTkButton(
             wrapper, text="Rechercher", command=self._go, font=BUTTON_FONT
         ).grid(row=6, column=0, pady=8, sticky="ne", padx=100)
 

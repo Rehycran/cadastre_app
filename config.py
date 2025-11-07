@@ -58,16 +58,19 @@ CC_TO_EPSG = {
     "CC50": "EPSG:3950",
 }
 
-DEFAULT_CRS_2154 = "EPSG:2154"
+DEFAULT_CRS = "EPSG:2154"
 DEFAULT_STEP = 50 #pas de la grille alti en mètres
 
-USER_AGENT = "cadastre-app/1.0"
+USER_AGENT = "cadastre-app"
 TIMEOUT = (5, 60)
 RETRIES = Retry(total=3, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504))
 
-EMPTY_ALTI = gpd.GeoDataFrame(columns=["geometry", "elevations"], geometry="geometry", crs=DEFAULT_CRS_2154)
+EMPTY_ALTI = gpd.GeoDataFrame(columns=["geometry", "elevations"], geometry="geometry", crs=DEFAULT_CRS)
 
-TEXT_FONT = ("Futura PT Demi", 14)
-BUTTON_FONT = ("Futura PT Bold", 14)
-ENTRY_FONT = ("Futura PT Book", 12)
-INFO_FONT = ("Futura PT Light",9)
+HEADER_FONT = ("Futura PT Demi", 23)
+TEXT_FONT = ("Futura PT Book", 20)
+BUTTON_FONT = ("Futura PT Bold", 18)
+ENTRY_FONT = ("Futura PT Book", 16)
+INFO_FONT = ("Futura PT Light",12)
+
+MARKER_ICON_PATH = "cadastre_app/ressources/marker_icon.png"
