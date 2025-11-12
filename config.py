@@ -3,8 +3,50 @@ from requests.adapters import HTTPAdapter, Retry
 import geopandas as gpd
 
 WFS_URL = "https://data.geopf.fr/wfs/ows"
-LAYER_BUILDINGS = "BDTOPO_V3:batiment"
-LAYER_PARCELLES = "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle"
+WFS_LAYERS = {"Batiment" : ("BDTOPO_V3:batiment", True),
+              "Parcelle" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", True),
+              "Commune" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:commune", False),
+              "Arrondissement" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:arrondissement", False),
+              "Subdivision fiscale" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:subdivision_fiscale", False),
+              "ERP" : ("BDTOPO_V3:erp", False),
+              "Route" : ("BDTOPO_V3:troncon_de_route", False),
+              "Voie ferree" : ("BDTOPO_V3:troncon_de_voie_ferree", False),
+              "Equipement de transport" : ("BDTOPO_V3:equipement_de_transport", False),
+              "Ligne electrique" : ("BDTOPO_V3:ligne_electrique", False),
+              "Cimetiere" : ("BDTOPO_V3:cimetiere", False),
+              "Reservoir" : ("BDTOPO_V3:reservoir", False),
+              "Plan d'eau" : ("BDTOPO_V3:plan_d_eau", False),
+              "Cours d'eau" : ("BDTOPO_V3:cours_d_eau", False),
+              "Parc-Reserve" : ("BDTOPO_V3:parc_ou_reserve", False),
+              "Foret" : ("BDTOPO_V3:foret_publique", False),
+              "Haie" : ("BDTOPO_V3:haie", False),
+              "Zone de végétation" : ("BDTOPO_V3:zone_de_vegetation", False),
+              "Terrain de sport" : ("BDTOPO_V3:terrain_de_sport", False),
+              "Aerodrome" : ("BDTOPO_V3:aerodrome", False),
+              "Piste d'aerodrome" : ("BDTOPO_V3:piste_d_aerodrome", False)
+            }
+WFS_ATTRIB = {"Batiment" : {"hauteur", "altitude_maximale_toit", "altitude_minimale_toit", "altitude_minimale_sol"},
+              "Parcelle" : {"IDU", "NUMERO", "FEUILLE", "SECTION" },
+              "Commune" : {"NOM_COM"},
+              "Arrondissement" : {"NOM_ARR"},
+              "Subdivision fiscale" : {"LETTRE"},
+              "ERP" : {"type_principal", "libelle"},
+              "Route" : {"largeur_de_chaussee"},
+              "Voie ferree" : {"largeur"},
+              "Equipement de transport" : {"nature"},
+              "Ligne electrique" : {},
+              "Cimetiere" : {},
+              "Reservoir" : {"hauteur", "altitude_maximale_toit", "altitude_minimale_toit", "altitude_minimale_sol"},
+              "Plan d'eau" : {"altitude_moyenne"},
+              "Cours d'eau" : {},
+              "Parc-Reserve" : {"nature"},
+              "Foret" : {"nature"},
+              "Haie" : {"largeur", "hauteur"},
+              "Zone de végétation" : {},
+              "Terrain de sport" : {"nature"},
+              "Aerodrome" : {"altitude"},
+              "Piste d'aerodrome" : {}
+            }
 ALTI_URL = "https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json"
 
 DEPT_TO_CC = {
@@ -58,8 +100,8 @@ CC_TO_EPSG = {
     "CC50": "EPSG:3950",
 }
 
-DEFAULT_CRS = "EPSG:2154"
-DEFAULT_STEP = 50 #pas de la grille alti en mètres
+DEFAULT_CRS = "EPSG:2154" #Lambert 93 v1 France metropolitaine
+DEFAULT_STEP = 5 #pas de la grille alti en mètres
 
 USER_AGENT = "cadastre-app"
 TIMEOUT = (5, 60)

@@ -1,6 +1,6 @@
 import os, ezdxf
 from datetime import datetime
-from .geometry import polygon_to_3d_polylines, fix_geom
+from .geometry import shapely_to_simple_geometry, fix_geom
 import math
 
 def _is_finite3(p):
@@ -90,7 +90,7 @@ def write_dxf_two_layers(
                 z = first_finite(row.get("hauteur"), default=0.0)
             if not math.isfinite(z):
                 z = 0.0
-            for pts in polygon_to_3d_polylines(geom, z):
+            for pts in shapely_to_simple_geometry(geom, z):
                 pl = _safe_add_polyline3d(msp, pts, layer_building, close=(close_polylines and len(pts) >= 3))
                 if pl is None:
                     continue
@@ -106,13 +106,13 @@ def write_dxf_two_layers(
             geom = fix_geom(row.geometry)
             if geom is None or geom.is_empty:
                 continue
-            for pts in polygon_to_3d_polylines(geom, 0.0):
+            for pts in shapely_to_simple_geometry(geom, 0.0):
                 pl = _safe_add_polyline3d(msp, pts, layer_parcelle, close=(close_polylines and len(pts) >= 3))
                 if pl is None:
                     continue
                 n_parc += 1
 
-    # --- Courbes de niveau (LineString/MultiLineString expected) ---
+    # --- Points altimetriques ---
     if point_alti :
         if gdf_alti is not None and not getattr(gdf_alti, "empty", True):
             for _, row in gdf_alti.iterrows():
@@ -122,20 +122,15 @@ def write_dxf_two_layers(
                 z = first_finite(row.get("z"), default=0.0)
                 if z == -99999.0 :
                     continue
-                # polygon_to_3d_polylines must support LineString/MultiLineString
                 if geom.geom_type == "Point" :
                     x,y = geom.x, geom.y
                     pl = msp.add_point((x,y,z), dxfattribs={"layer": layer_point_alti})  # never close contours
                 else :
                     continue
-#                    try:
-#                        pl.set_xdata("BDTOPO", [(1000, "altitude_m"), (1040, float(z))])
-#                    except ezdxf.DXFError:
-#                        pass
                 n_pt += 1
 
     if address_for_note or target_epsg_for_note:
         add_paperspace_note(doc, address_for_note, target_epsg_for_note)
 
     doc.saveas(out_path)
-    return n_build, n_parc, n_pt
+    return

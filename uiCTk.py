@@ -1,16 +1,20 @@
 from tkinter import END, Label, StringVar, IntVar, filedialog, BooleanVar, Checkbutton, Canvas, PhotoImage, Listbox
 
-from customtkinter import CTk, CTkLabel, CTkEntry, CTkFrame, CTkSlider, CTkButton, CTkCheckBox
+from customtkinter import CTk, CTkLabel, CTkEntry, CTkFrame, CTkSlider, CTkButton, CTkCheckBox, CTkScrollableFrame, CTkSwitch
 import customtkinter
-from CTkListbox import * 
+from CTkListbox import CTkListbox
 
 from tkintermapview import TkinterMapView, canvas_button
 
 from pyproj import Transformer
+from math import ceil
 
-from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT, MARKER_ICON_PATH
+
+from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
 from .geocode import geocode, autocomplete, Address
 from .crsmap import epsg_from_postcode
+from .wfs import fetch_layer, fetch_alti
+from .dxfwriter import write_dxf_two_layers
 
 
 def normalize_decimal(text : str) -> float | None :
@@ -41,7 +45,6 @@ def bbox_meters_to_degree(lat : float, lon : float,
     if isinstance(address, Address) :
         t1 = Transformer.from_crs("EPSG:4326", epsg_from_postcode(address.postcode), always_xy=True)
         t2 = Transformer.from_crs(epsg_from_postcode(address.postcode), "EPSG:4326", always_xy=True)
-        print(address.label)
     else :
         t1 = Transformer.from_crs("EPSG:4326", DEFAULT_CRS, always_xy=True)
         t2 = Transformer.from_crs(DEFAULT_CRS, "EPSG:4326", always_xy=True)
@@ -80,10 +83,16 @@ class App(CTk) :
         self.lock_status = "unlock"
         
         #Alti points special values
-        self.distance_step = IntVar(value=5)
-        self.calculated_pts = StringVar(value= f"({((self.distance_var_x.get()*self.distance_var_y.get())//self.distance_step.get()+2)**2} points à créer)")
+        self.distance_step = IntVar(value=DEFAULT_STEP)
+        self.calculated_pts = StringVar(value=f"m. Soit ~{(ceil(self.distance_var_x.get()*2/self.distance_step.get())+1)*(1+ceil(self.distance_var_y.get()*2/self.distance_step.get()))} points à créer")
         
         #Selected layer values
+        self.available_layers = {}
+        for layer_name, layer_value in WFS_LAYERS.items() :
+            self.available_layers[layer_name] = (
+                layer_value[0],
+                BooleanVar(value=layer_value[1])
+            )
         self.points_alti = BooleanVar(value=True)
         
         
@@ -101,8 +110,8 @@ class App(CTk) :
     def main_layout(self) :
         
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=3)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
         
         
         self.bind("<Button-1>", self.focus_click)
@@ -124,12 +133,12 @@ class App(CTk) :
                         fg_color=("gray93","gray15")
                         )
         self.menu.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        self.menu.grid_columnconfigure(0, weight=1)
+        self.menu.grid_columnconfigure(0, weight=0, minsize=640)
 
 #Search bar, button and candidates dropdown
     def build_search_block(self):
         self.search_frame = CTkFrame(self.menu, fg_color="transparent")
-        self.search_frame.grid(row=1, sticky="nsew", padx=35, pady=(60, 0))
+        self.search_frame.grid(row=1, sticky="new", padx=35, pady=(60, 0))
         self.search_frame.grid_columnconfigure(0, weight=1)
 
         self.search_hint = CTkLabel(
@@ -299,9 +308,12 @@ class App(CTk) :
         )
 
 #Layers to download
-    def add_layer_box(self, text, variable) :
-        self.check_topo = CTkCheckBox(
-            self.layer_frame,
+    def add_layer_box(self, parent, text, variable=None) :
+        if text in self.available_layers.keys() :
+            variable = self.available_layers[text][1]
+        
+        check_topo = CTkCheckBox(
+            master=parent,
             text=text,
             font=TEXT_FONT,
             checkbox_height=18,
@@ -310,11 +322,11 @@ class App(CTk) :
             border_width=2,
             variable=variable
             )
-        self.check_topo.pack(side="top", fill='x',padx=(3,0))
+        check_topo.pack(side="top", fill='x',padx=(3,0))
 
     def build_layer_block(self):
         self.layer_frame = CTkFrame(self.menu, fg_color="transparent")
-        self.layer_frame.grid(row=4, sticky="nswe", padx=35, pady=(30,0))
+        self.layer_frame.grid(row=4, sticky="nwe", padx=35, pady=(30,0))
         
         self.layer_header = CTkLabel(
             master=self.layer_frame,
@@ -324,9 +336,103 @@ class App(CTk) :
             )
         self.layer_header.pack(side="top", fill="x", pady=(0,10))
         
-        self.add_layer_box("Parcelles",None)
-        self.add_layer_box("Bâtiments",None)
-        self.add_layer_box("Points altimétriques", self.points_alti)
+        self.pts_alti_frame = CTkFrame(
+            self.layer_frame,
+            fg_color="transparent"
+            )
+        self.pts_alti_frame.pack(side="top", anchor="w",pady=(0,3),fill="x")
+        
+        
+        check_alti = CTkSwitch(
+            master=self.pts_alti_frame,
+            text="Points altimétriques",
+            font=TEXT_FONT,
+            switch_height=18,
+            switch_width=36,
+            corner_radius=18,
+            border_width=2,
+            variable=self.points_alti,
+            command=self.update_calculated_pts
+            )
+        check_alti.pack(side="left",padx=(3,5))
+        text1_alti = CTkLabel(self.pts_alti_frame, font=TEXT_FONT, text="au pas de ")
+        text1_alti.pack(side="left")
+        pas_alti = CTkEntry(self.pts_alti_frame, textvariable=self.distance_step, width=30)
+        pas_alti.pack(side="left")
+        text2_alti = CTkLabel(self.pts_alti_frame, font=TEXT_FONT, textvariable=self.calculated_pts)
+        text2_alti.pack(side="left", anchor="w")
+        
+        self.distance_var_x.trace_add("write", self.update_calculated_pts)
+        self.distance_var_y.trace_add("write", self.update_calculated_pts)
+        self.distance_step.trace_add("write", self.update_calculated_pts)
+        
+        self.layer_simple = CTkFrame(self.layer_frame, fg_color="transparent")
+        self.layer_simple.pack(side="top", fill="both")
+        
+        self.add_layer_box(self.layer_simple,"Batiment")
+        self.add_layer_box(self.layer_simple,"Parcelle")
+
+        self.show_button = CTkButton(
+            self.layer_frame,
+            text="Voir plus",
+            fg_color="transparent",
+            font=ENTRY_FONT,
+            border_color=None,
+            text_color=("#154f7c","#2078bc"),
+            hover_color=("#b6b6b6","#383838"),
+            width=30,
+            command=self.show_more
+            )
+        self.show_button.pack(side="top")
+        
+        self.layer_scroll = CTkScrollableFrame(
+            self.layer_frame,
+            fg_color="transparent",
+            height=235,
+            border_width=0
+            )
+        for layer_name in WFS_LAYERS :
+            self.add_layer_box(self.layer_scroll,layer_name)
+        
+        self.less_button = CTkButton(
+            self.layer_frame,
+            text="Voir moins",
+            fg_color="transparent",
+            font=ENTRY_FONT,
+            border_color=None,
+            text_color=("#154f7c","#2078bc"),
+            hover_color=("#b6b6b6","#383838"),
+            width=30,
+            command=self.show_less
+            )
+
+    def show_more(self) :
+        self.layer_simple.pack_forget()
+        self.show_button.pack_forget()
+        self.layer_scroll.pack(side="top",fill="both")
+        self.less_button.pack(side="top")
+
+    def show_less(self) :
+        self.layer_scroll.pack_forget()
+        self.less_button.pack_forget()
+        for layer in self.layer_simple.winfo_children() :
+            if layer.cget("text") not in ["Batiment", "Parcelle"] :
+                layer.destroy()
+        for selected_layer_name, selected_layer_val in self.available_layers.items() :
+            if selected_layer_name not in ["Batiment", "Parcelle"] and selected_layer_val[1].get() :
+                self.add_layer_box(self.layer_simple,selected_layer_name)
+        self.layer_simple.pack(side="top",fill="both")
+        self.show_button.pack(side="top")
+
+    def update_calculated_pts(self, *args) :
+        try:
+            x = self.distance_var_x.get()
+            y = self.distance_var_y.get()
+            pas = self.distance_step.get()
+            n = (1+ceil(x*2/pas))*(1+ceil(y*2/pas))
+            self.calculated_pts.set(f"m. Soit ~{n if self.points_alti.get() else "-"} points à créer")
+        except Exception:
+            self.calculated_pts.set("m. Soit - points à créer")
 
 #Downloading process
     def build_download_block(self):
@@ -337,10 +443,39 @@ class App(CTk) :
             height=40,
             command=self.download
             )
-        self.download_button.grid(row=5, sticky="nsew", padx=50, pady=30)
+        self.download_button.grid(row=5, sticky="nsew", padx=100, pady=30)
 
     def download(self):
-        pass
+        
+        if self.poly is None :
+            return
+        
+        bbox = (
+            self.poly.position_list[0][0], self.poly.position_list[0][1],
+            self.poly.position_list[2][0], self.poly.position_list[2][1]
+        )
+        
+        selected_layers = {x:y[0] for x,y in self.available_layers.items() if y[1].get()}
+        
+        gdf_dict = {}
+        for layer_name, layer_value in selected_layers.items() :
+            gdf_dict[layer_name] = fetch_layer(layer_value, bbox)
+        
+        alti_pts=fetch_alti(
+            self.lat,
+            self.lon,
+            self.distance_var_x.get(),
+            self.distance_var_y.get(),
+            self.distance_step.get()
+            )
+        
+        write_dxf_two_layers(
+            None,
+            None,
+            alti_pts,
+            r'C:\Users\y.naessens\Desktop\text.dxf'
+        )
+
 
 
 
