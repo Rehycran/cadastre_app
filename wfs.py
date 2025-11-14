@@ -34,13 +34,13 @@ def fetch_layer(layer_name: str, bbox: tuple[float,float,float,float], max_per_p
         if data is not None :
             feats = data.get("features", [])
             if not feats: break
-            gdf = gpd.GeoDataFrame.from_features(feats)
+            gdf = gpd.GeoDataFrame().from_features(feats, crs="EPSG:4326")
             pages.append(gdf)
             if len(feats) < max_per_page: break
             start += max_per_page
         else :
-            return gpd.GeoDataFrame(geometry=[])
-    return gpd.pd.concat(pages, ignore_index=True) if pages else gpd.GeoDataFrame(geometry=[])
+            return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
+    return gpd.pd.concat(pages, ignore_index=True) if pages else gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
 
 def fetch_buildings(bbox, max_per_page=5000):
     gdf = fetch_layer(LAYER_BUILDINGS, bbox, max_per_page)

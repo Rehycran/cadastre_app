@@ -1,7 +1,10 @@
 import os, ezdxf
 from datetime import datetime
-from .geometry import shapely_to_simple_geometry, fix_geom
+from .geometry import shapely_to_simple_geometry, fix_geom, geojson_to_simplegeometry
 import math
+
+from .config import KELLY_COLOR
+
 
 def _is_finite3(p):
     x, y, z = p
@@ -19,11 +22,12 @@ def _clean_pts(pts):
             last = p
     return out
 
-def _safe_add_polyline3d(msp, pts, layer, close=False):
+def _safe_add_entity(msp, pts, layer, close=False):
     pts = _clean_pts(pts)
     # need at least two vertices, three if you want to close
     if len(pts) < 2:
-        return None
+        pt = msp.add_point(pts, dxfattribs={"layer": layer})
+        return pt
     pl = msp.add_polyline3d(pts, dxfattribs={"layer": layer})
     if close and len(pts) >= 3:
         pl.close(True)
@@ -54,26 +58,38 @@ def add_paperspace_note(doc, address, target_epsg):
         mtext.set_location((10,145))
     except: pass
 
-def write_dxf_two_layers(
-    gdf_b, gdf_p, gdf_alti, out_path,
-    layer_building="Batiment", layer_parcelle="Parcelle", layer_point_alti="Point_Altimetrique",
-    close_polylines=True, address_for_note="", target_epsg_for_note="", point_alti=True
+def create_dxf(
+    gdf_dict, gdf_alti, out_path,
+    address_for_note="", target_epsg_for_note="", point_alti=True
     ):
+    
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    doc = ezdxf.new("R2018")
+    doc = ezdxf.new(dxfversion="R2018")
     msp = doc.modelspace()
 
-    # layers & header
-    if layer_building not in doc.layers: doc.layers.add(name=layer_building, color=13)
-    if layer_parcelle not in doc.layers: doc.layers.add(name=layer_parcelle, color=153)
-    if layer_point_alti not in doc.layers and point_alti: doc.layers.add(name=layer_point_alti, color=106)
-    doc.header["$INSUNITS"] = 6   # meters
-    doc.header["$MEASUREMENT"] = 1
+    doc.header["$INSUNITS"] = 6 #meters
+    doc.header["$MEASUREMENT"] = 1 #metric system
+    
     if "BDTOPO" not in doc.appids: doc.appids.add("BDTOPO")
+    
+    for (layer_name, gdf_geom) ,kelly_rgb in zip(gdf_dict.items(), KELLY_COLOR.values()):
+        if layer_name not in doc.layers: 
+            doc.layers.add(name=layer_name, color=ezdxf.rgb2int((0,0,0)))
+        for index, row in gdf_geom.iterrows() :
+            fixed_geom = fix_geom(row.geometry)
+            if fixed_geom is None or fixed_geom.is_empty:
+                continue
+            for points in geojson_to_simplegeometry(fixed_geom, 0) :
+                _safe_add_entity(msp, points, layer_name, True)
+    
+    
+    # layers & header
+    if "Point alti" not in doc.layers and point_alti: doc.layers.add(name="Point alti", color=102)
+
 
     n_build = n_parc = n_pt = 0
 
-    # --- Buildings (Polygon/MultiPolygon expected) ---
+    """    # --- Buildings (Polygon/MultiPolygon expected) ---
     if gdf_b is not None and not gdf_b.empty:
         for _, row in gdf_b.iterrows():
             geom = fix_geom(row.geometry)
@@ -111,6 +127,7 @@ def write_dxf_two_layers(
                 if pl is None:
                     continue
                 n_parc += 1
+                """
 
     # --- Points altimetriques ---
     if point_alti :
@@ -124,7 +141,7 @@ def write_dxf_two_layers(
                     continue
                 if geom.geom_type == "Point" :
                     x,y = geom.x, geom.y
-                    pl = msp.add_point((x,y,z), dxfattribs={"layer": layer_point_alti})  # never close contours
+                    pl = msp.add_point((x,y,z), dxfattribs={"layer": "Point alti"})  # never close contours
                 else :
                     continue
                 n_pt += 1

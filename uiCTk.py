@@ -14,7 +14,7 @@ from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS
 from .geocode import geocode, autocomplete, Address
 from .crsmap import epsg_from_postcode
 from .wfs import fetch_layer, fetch_alti
-from .dxfwriter import write_dxf_two_layers
+from .dxfwriter import create_dxf
 
 
 def normalize_decimal(text : str) -> float | None :
@@ -460,6 +460,8 @@ class App(CTk) :
         gdf_dict = {}
         for layer_name, layer_value in selected_layers.items() :
             gdf_dict[layer_name] = fetch_layer(layer_value, bbox)
+            
+        
         
         alti_pts=fetch_alti(
             self.lat,
@@ -469,9 +471,8 @@ class App(CTk) :
             self.distance_step.get()
             )
         
-        write_dxf_two_layers(
-            None,
-            None,
+        create_dxf(
+            gdf_dict,
             alti_pts,
             r'C:\Users\y.naessens\Desktop\text.dxf'
         )
