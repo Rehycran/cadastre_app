@@ -1,20 +1,14 @@
 import geopandas as gpd
 import pandas as pd
 import requests
-from .config import WFS_URL, USER_AGENT, TIMEOUT, ALTI_URL
 import math
 import time
+
+from .config import WFS_URL, USER_AGENT, TIMEOUT, ALTI_URL
 
 session = requests.Session()
 session.headers.update({"User-Agent": USER_AGENT})
 
-def _wfs_get_json(params: dict):
-    r = session.get(WFS_URL, params=params, timeout=TIMEOUT)
-    try :
-        r.raise_for_status()
-        return r.json()
-    except requests.exceptions.HTTPError as e :
-        return None
 
 def fetch_layer(layer_name: str, bbox: tuple[float,float,float,float], max_per_page=5000, cancel_event=None):
     start = 0; 
@@ -34,7 +28,11 @@ def fetch_layer(layer_name: str, bbox: tuple[float,float,float,float], max_per_p
             "outputFormat":"application/json",
             "bbox":",".join(f"{v:.3f}" for v in bbox)
         }
-        data = _wfs_get_json(params)
+        
+        r = session.get(WFS_URL, params=params, timeout=TIMEOUT)
+        r.raise_for_status()
+        
+        data = r.json()
         if data is not None :
             feats = data.get("features", [])
             if not feats: break
@@ -139,6 +137,7 @@ def fetch_alti(bbox, pas_metre = 5, cancel_event=None) :
         response = session.post(ALTI_URL, json=params, headers=headers, timeout=(10, 120))
 
         response.raise_for_status()
+            
         
         if lidar_available :
             lidar_available = not(all([x.get("z",-99999.0)==-99999.0 for x in response.json().get("elevations",[])]))

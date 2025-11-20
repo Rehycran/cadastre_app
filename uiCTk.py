@@ -1,4 +1,4 @@
-from tkinter import END, Label, StringVar, IntVar, filedialog, BooleanVar, Checkbutton, Canvas, PhotoImage, Listbox, Frame
+from tkinter import END, StringVar, IntVar, filedialog, BooleanVar, PhotoImage, Frame
 
 from customtkinter import CTk, CTkLabel, CTkEntry, CTkFrame, CTkSlider, CTkButton, CTkCheckBox, CTkScrollableFrame, CTkSwitch, CTkProgressBar
 import customtkinter
@@ -12,9 +12,10 @@ import re
 import threading
 import os 
 from pathlib import Path
+import requests
 
 
-from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
+from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
 from .geocode import geocode, autocomplete, Address, inverse_geocode
 from .crsmap import epsg_from_postcode
 from .wfs import fetch_layer, fetch_alti
@@ -564,8 +565,22 @@ class App(CTk) :
             )
         self.open_dir.pack(side="left", fill="both",expand=True,padx=(2,0))
         
-    def download(self):
+    def http_error_feedback(self, error = "") :
+        fulltext = error
+        textlist=[]
+        if len(fulltext) > 45 :
+            text_block = "\n".join(fulltext[i:i+45] for i in range(0, len(fulltext), 45))
+        else :
+            text_block = fulltext
+            
+        self.error_msg = CTkLabel(
+            master=self.menu,
+            text="Essayez de relancer le téléchargement\n\n"+"erreur : \n"+text_block,
+            font=INFO_FONT
+        )
+        self.error_msg.grid(row=7, sticky="nsew")
         
+    def download(self):
         
         if self.poly is None :
             return
@@ -623,10 +638,14 @@ class App(CTk) :
                     cancel_event=self.cancel_event
                     )
                 
-            finally :
-                self.after(0,self.destroy_progress_bar)
                 if Path(file_path).exists() :
                     self.after(0,self.build_open_frame(file_path))
+                
+            except requests.exceptions.HTTPError as e :
+                self.http_error_feedback(str(e))
+                
+            finally :
+                self.after(0,self.destroy_progress_bar)
                 self.selected_addr = None
         
         threading.Thread(target=worker, daemon=True).start()

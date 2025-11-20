@@ -43,7 +43,6 @@ def geojson_to_simplegeometry(geom, bbox_polygon):
     elif isinstance(geom,Polygon):
         close = True
         if not geom.is_empty:
-            print()
             if shapely.intersects(geom, bbox_polygon) :
                 simple_geometries.append(shapely_to_simple_geometry(geom.exterior))
                 for inter in geom.interiors:

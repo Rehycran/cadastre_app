@@ -1,6 +1,4 @@
-import re
-import requests
-from .config import USER_AGENT, TIMEOUT, CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
+from .config import CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
 
 from .geocode import Address
 

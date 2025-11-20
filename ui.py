@@ -209,7 +209,6 @@ class App:
         
         def open_folder(out_path) :
             folder_path = Path(out_path).parent
-            print(folder_path)
             if folder_path.exists():
                 os.startfile(str(folder_path))
 

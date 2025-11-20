@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import Retry
 import geopandas as gpd
 
 WFS_URL = "https://data.geopf.fr/wfs/ows"
@@ -132,8 +132,6 @@ DEFAULT_STEP = 5 #pas de la grille alti en mètres
 USER_AGENT = "cadastre-app"
 TIMEOUT = (5, 60)
 RETRIES = Retry(total=3, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504))
-
-EMPTY_ALTI = gpd.GeoDataFrame(columns=["geometry", "elevations"], geometry="geometry", crs=DEFAULT_CRS)
 
 HEADER_FONT = ("Futura PT Demi", 23)
 TEXT_FONT = ("Futura PT Book", 20)
