@@ -2,12 +2,14 @@ import re
 import requests
 from .config import USER_AGENT, TIMEOUT, CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
 
+from .geocode import Address
 
-def epsg_from_postcode(postcode: str, fallback: str = DEFAULT_CRS) -> str:
 
-    if not postcode or len(postcode) < 2:
+def epsg_from_postcode(address: Address, fallback: str = DEFAULT_CRS) -> str:
+
+    if not hasattr(address, "postcode") or len(address.postcode) < 2:
         return fallback
-    dept = postcode[:2]
+    dept = address.postcode[:2]
     # Handle Corsica postcodes (20***)
     if dept == "20":
         return CC_TO_EPSG["CC42"]

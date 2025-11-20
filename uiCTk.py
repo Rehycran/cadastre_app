@@ -1,6 +1,6 @@
-from tkinter import END, Label, StringVar, IntVar, filedialog, BooleanVar, Checkbutton, Canvas, PhotoImage, Listbox
+from tkinter import END, Label, StringVar, IntVar, filedialog, BooleanVar, Checkbutton, Canvas, PhotoImage, Listbox, Frame
 
-from customtkinter import CTk, CTkLabel, CTkEntry, CTkFrame, CTkSlider, CTkButton, CTkCheckBox, CTkScrollableFrame, CTkSwitch
+from customtkinter import CTk, CTkLabel, CTkEntry, CTkFrame, CTkSlider, CTkButton, CTkCheckBox, CTkScrollableFrame, CTkSwitch, CTkProgressBar
 import customtkinter
 from CTkListbox import CTkListbox
 
@@ -8,10 +8,14 @@ from tkintermapview import TkinterMapView, canvas_button
 
 from pyproj import Transformer
 from math import ceil
+import re
+import threading
+import os 
+from pathlib import Path
 
 
 from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, EMPTY_ALTI, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
-from .geocode import geocode, autocomplete, Address
+from .geocode import geocode, autocomplete, Address, inverse_geocode
 from .crsmap import epsg_from_postcode
 from .wfs import fetch_layer, fetch_alti
 from .dxfwriter import create_dxf
@@ -43,8 +47,8 @@ def bbox_meters_to_degree(lat : float, lon : float,
                           address = None
                           ):
     if isinstance(address, Address) :
-        t1 = Transformer.from_crs("EPSG:4326", epsg_from_postcode(address.postcode), always_xy=True)
-        t2 = Transformer.from_crs(epsg_from_postcode(address.postcode), "EPSG:4326", always_xy=True)
+        t1 = Transformer.from_crs("EPSG:4326", epsg_from_postcode(address), always_xy=True)
+        t2 = Transformer.from_crs(epsg_from_postcode(address), "EPSG:4326", always_xy=True)
     else :
         t1 = Transformer.from_crs("EPSG:4326", DEFAULT_CRS, always_xy=True)
         t2 = Transformer.from_crs(DEFAULT_CRS, "EPSG:4326", always_xy=True)
@@ -55,6 +59,28 @@ def bbox_meters_to_degree(lat : float, lon : float,
             t2.transform(x-delta_lon, y+delta_lat)
             ]
     return [(y1, x1), (y2, x2), (y3, x3), (y4,x4)]
+
+def select_filepath(address_label: str="") -> str | None :
+    safe_name = re.sub(r'[\\/*?:"<>|]', "_", address_label)
+    file_path = filedialog.asksaveasfilename(title="Choisir un dossier pour enregister les fichiers", initialfile=safe_name,defaultextension=".dxf")
+    return file_path or None
+
+def get_all_children(widget):
+    children = widget.winfo_children()
+    all_children = []
+
+    for child in children:
+        all_children.append(child)
+        all_children.extend(get_all_children(child))  # récursion
+
+    return all_children
+
+def freeze_slider(slider) :
+    slider._canvas.bind("<Button-1>", lambda e: "break")
+    slider._canvas.bind("<B1-Motion>", lambda e: "break")
+    slider._canvas.bind("<ButtonRelease-1>", lambda e: "break")
+    
+    slider.configure(command=None)
 
 customtkinter.set_default_color_theme("blue")
 customtkinter.set_appearance_mode("system")
@@ -67,6 +93,9 @@ class App(CTk) :
         self.geometry(f'1400x900+{int(self.winfo_screenwidth()/2-700)}+{int(self.winfo_screenheight()/2-450)}')
         self.title("Import parcelle et bati3D")
         self.minsize(750,500)
+        
+        #cancellation event init
+        self.cancel_event = None
         
         #Adress searching values
         self.searched_addr = StringVar()
@@ -98,7 +127,6 @@ class App(CTk) :
         
         
         self.main_layout()
-
 
 #---------General window configuration---------
     def focus_click(self, event):#Used to hode the dropdown on click elsewhere
@@ -306,6 +334,7 @@ class App(CTk) :
             var=self.distance_var_y,
             command=self.update_poly,
         )
+        
 
 #Layers to download
     def add_layer_box(self, parent, text, variable=None) :
@@ -445,37 +474,163 @@ class App(CTk) :
             )
         self.download_button.grid(row=5, sticky="nsew", padx=100, pady=30)
 
+    def build_progress_bar(self) :
+        self.progress_bar = CTkProgressBar(
+            master=self.menu,
+            width=200,
+            height=20,
+            mode="indeterminate",
+            indeterminate_speed=0.5,
+            orientation="horizontal"
+            )
+        self.progress_bar.grid(row=6, sticky="nsew", padx=100, pady=0)
+        self.progress_bar.start()
+
+    def transform_to_cancel(self):
+        self.download_button.configure(
+            text= "Annuler",
+            command=self.on_cancel_clicked,
+            fg_color="#594c4c"
+            )
+        for w in get_all_children(self) :
+            try :
+                if not w.cget("text") == "Annuler" :
+                    w.configure(state="disabled")
+            except :
+                pass
+            if isinstance(w, CTkSlider) :
+               freeze_slider(w)
+        self.map_overlay = Frame(self.map_frame, bg="", cursor="arrow")
+        self.map_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+    def reenable_all(self):
+        for w in get_all_children(self) :
+            try :
+                w.configure(state="normal")
+                if isinstance(w, CTkSlider) :
+                    w._create_bindings()
+                    w.configure(command=self.update_poly)
+            except Exception :
+                pass
+        self.map_overlay.destroy()
+
+    def on_cancel_clicked(self):
+        if self.cancel_event is not None:
+            self.cancel_event.set()
+            
+            self.reenable_all()
+            self.transform_to_download()
+            self.destroy_progress_bar()
+
+    def transform_to_download(self) :
+        self.download_button.configure(
+            text="Télécharger DXF",
+            command=self.download,
+            fg_color="#1f6aa5"
+            )
+        self.reenable_all()
+
+    def destroy_progress_bar(self) :
+        if hasattr(self, "progress_bar") and self.progress_bar is not None:
+            self.progress_bar.stop()
+            self.progress_bar.destroy()
+            self.progress_bar = None
+            self.transform_to_download()
+
+    def build_open_frame(self, path):
+        
+        dir_path = Path(path).parent
+        
+        self.open_frame = CTkFrame(
+            master=self.menu,
+            height=27,
+            fg_color="transparent"
+        )
+        self.open_frame.grid(row=6, sticky="nsew", padx = 100)
+        
+        self.open_file = CTkButton(
+            master=self.open_frame,
+            text="Ouvrir dxf",
+            font=BUTTON_FONT,
+            command= lambda : os.startfile(str(path))
+            )
+        self.open_file.pack(side="left", fill="both",expand=True,padx=(0,2))
+        
+        self.open_dir = CTkButton(
+            master=self.open_frame,
+            text="Ouvrir dossier",
+            font=BUTTON_FONT,
+            command= lambda : os.startfile(str(dir_path))
+            )
+        self.open_dir.pack(side="left", fill="both",expand=True,padx=(2,0))
+        
     def download(self):
+        
         
         if self.poly is None :
             return
         
-        bbox = (
-            self.poly.position_list[0][0], self.poly.position_list[0][1],
-            self.poly.position_list[2][0], self.poly.position_list[2][1]
-        )
+        (y1, x1), (y2, x2), (y3, x3), (y4,x4) = bbox_meters_to_degree(
+                self.lat,
+                self.lon,
+                self.distance_var_y.get(),
+                self.distance_var_x.get(),
+                self.selected_addr
+                )
+        bbox = (y1, x1, y3, x3)
+        bbox_polygon=((x1, y1), (x2,y2), (x3,y3), (x4,y4))
         
         selected_layers = {x:y[0] for x,y in self.available_layers.items() if y[1].get()}
         
-        gdf_dict = {}
-        for layer_name, layer_value in selected_layers.items() :
-            gdf_dict[layer_name] = fetch_layer(layer_value, bbox)
+        if self.selected_addr is None :
+            self.selected_addr = inverse_geocode(self.lon, self.lat)
+        
+        if self.selected_addr is not None :
+            file_path = select_filepath(self.selected_addr.label)
+        else :
+            file_path = select_filepath("")
             
+        if not file_path :
+            return
         
+        self.build_progress_bar()
+        self.transform_to_cancel()
         
-        alti_pts=fetch_alti(
-            self.lat,
-            self.lon,
-            self.distance_var_x.get(),
-            self.distance_var_y.get(),
-            self.distance_step.get()
-            )
+        self.cancel_event = threading.Event()
         
-        create_dxf(
-            gdf_dict,
-            alti_pts,
-            r'C:\Users\y.naessens\Desktop\text.dxf'
-        )
+        def worker() :
+            try :
+                gdf_dict = {}
+                for layer_name, layer_value in selected_layers.items() :
+                    gdf_dict[layer_name] = fetch_layer(layer_value, bbox, cancel_event=self.cancel_event)
+                
+                if self.points_alti.get() :
+                    alti_pts = fetch_alti(
+                        bbox=bbox,
+                        pas_metre=self.distance_step.get(),
+                        cancel_event=self.cancel_event
+                        )
+                else :
+                    alti_pts = None
+                
+                create_dxf(
+                    out_path=file_path,
+                    bbox_polygon=bbox_polygon,
+                    gdf_dict=gdf_dict,
+                    gdf_alti=alti_pts,
+                    address= self.selected_addr,
+                    point_alti=self.points_alti.get(),
+                    cancel_event=self.cancel_event
+                    )
+                
+            finally :
+                self.after(0,self.destroy_progress_bar)
+                if Path(file_path).exists() :
+                    self.after(0,self.build_open_frame(file_path))
+                self.selected_addr = None
+        
+        threading.Thread(target=worker, daemon=True).start()
+ 
 
 
 

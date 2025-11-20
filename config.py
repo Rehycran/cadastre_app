@@ -3,6 +3,10 @@ from requests.adapters import HTTPAdapter, Retry
 import geopandas as gpd
 
 WFS_URL = "https://data.geopf.fr/wfs/ows"
+GEOCODE_URL = 'https://data.geopf.fr/geocodage/search'
+AUTOCOM_URL = "https://data.geopf.fr/geocodage/completion/"
+INVERSE_ULR = 'https://data.geopf.fr/geocodage/reverse'
+
 WFS_LAYERS = {"Batiment" : ("BDTOPO_V3:batiment", True),
               "Parcelle" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", True),
               "Commune" : ("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:commune", False),
@@ -26,11 +30,11 @@ WFS_LAYERS = {"Batiment" : ("BDTOPO_V3:batiment", True),
               "Piste d'aerodrome" : ("BDTOPO_V3:piste_d_aerodrome", False)
             }
 WFS_ATTRIB = {"Batiment" : {"hauteur", "altitude_maximale_toit", "altitude_minimale_toit", "altitude_minimale_sol"},
-              "Parcelle" : {"IDU", "NUMERO", "FEUILLE", "SECTION" },
-              "Commune" : {"NOM_COM"},
-              "Arrondissement" : {"NOM_ARR"},
-              "Subdivision fiscale" : {"LETTRE"},
-              "ERP" : {"type_principal", "libelle"},
+              "Parcelle" : {"idu", "numero", "feuille", "section" },
+              "Commune" : {"nom_com"},
+              "Arrondissement" : {"nom_arr"},
+              "Subdivision fiscale" : {"lettre"},
+              "ERP" : {"categorie", "type_principal", "libelle"},
               "Route" : {"largeur_de_chaussee"},
               "Voie ferree" : {"largeur"},
               "Equipement de transport" : {"nature"},
