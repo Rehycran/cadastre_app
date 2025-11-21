@@ -1,6 +1,5 @@
-from .config import CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
-
-from .geocode import Address
+from cadastre_app.config import CC_TO_EPSG, DEPT_TO_CC, DEFAULT_CRS
+from cadastre_app.geocode import Address
 
 
 def epsg_from_postcode(address: Address, fallback: str = DEFAULT_CRS) -> str:

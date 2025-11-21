@@ -4,7 +4,7 @@ import requests
 import math
 import time
 
-from .config import WFS_URL, USER_AGENT, TIMEOUT, ALTI_URL
+from cadastre_app.config import WFS_URL, USER_AGENT, TIMEOUT, ALTI_URL
 
 session = requests.Session()
 session.headers.update({"User-Agent": USER_AGENT})
@@ -181,7 +181,7 @@ def get_address_alti(lon:float, lat:float) -> float :
     
     data = r.json()
     
-    if data.get("elevations").get("z", -99999.0) == -99999.0 :
+    if data.get("elevations")[0].get("z", -99999.0) == -99999.0 :
         params = {
             "format" : "json",
             "lon": str(lon),
@@ -199,6 +199,6 @@ def get_address_alti(lon:float, lat:float) -> float :
         data = r.json() 
     
     if data is not None :
-        return data.get("elevations").get("z", None)
+        return data.get("elevations")[0].get("z", None)
 
     return None

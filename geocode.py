@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import requests
-from .config import USER_AGENT, TIMEOUT, GEOCODE_URL, AUTOCOM_URL, INVERSE_ULR
+from cadastre_app.config import USER_AGENT, TIMEOUT, GEOCODE_URL, AUTOCOM_URL, INVERSE_ULR
 
 session = requests.Session()
 session.headers.update({"User-Agent": USER_AGENT})

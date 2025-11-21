@@ -15,11 +15,11 @@ from pathlib import Path
 import requests
 
 
-from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
-from .geocode import geocode, autocomplete, Address, inverse_geocode
-from .crsmap import epsg_from_postcode
-from .wfs import fetch_layer, fetch_alti, get_address_alti
-from .dxfwriter import create_dxf
+from cadastre_app.config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
+from cadastre_app.geocode import geocode, autocomplete, Address, inverse_geocode
+from cadastre_app.crsmap import epsg_from_postcode
+from cadastre_app.wfs import fetch_layer, fetch_alti, get_address_alti
+from cadastre_app.dxfwriter import create_dxf
 
 
 def normalize_decimal(text : str) -> float | None :

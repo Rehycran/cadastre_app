@@ -5,9 +5,9 @@ from datetime import datetime
 from shapely.geometry import Polygon, LineString, Point, MultiPolygon, MultiLineString, MultiPoint
 import shapely
 
-from .geometry import fix_geom, geojson_to_simplegeometry, from_crs_to_crs
-from .crsmap import epsg_from_postcode
-from .config import KELLY_COLOR, WFS_ATTRIB
+from cadastre_app.geometry import fix_geom, geojson_to_simplegeometry, from_crs_to_crs
+from cadastre_app.crsmap import epsg_from_postcode
+from cadastre_app.config import KELLY_COLOR, WFS_ATTRIB
 
 
 def first_finite(*vals, default=0.0):
