@@ -138,5 +138,3 @@ TEXT_FONT = ("Futura PT Book", 20)
 BUTTON_FONT = ("Futura PT Bold", 18)
 ENTRY_FONT = ("Futura PT Book", 16)
 INFO_FONT = ("Futura PT Light",12)
-
-MARKER_ICON_PATH = "cadastre_app/ressources/marker_icon.png"

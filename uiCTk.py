@@ -21,6 +21,20 @@ from cadastre_app.crsmap import epsg_from_postcode
 from cadastre_app.wfs import fetch_layer, fetch_alti, get_address_alti
 from cadastre_app.dxfwriter import create_dxf
 
+def resource_path(relative_path: str) -> str:
+    """
+    Get absolute path to resource, works for dev and for PyInstaller.
+    relative_path is relative to this file's directory.
+    """
+    # When running with PyInstaller
+    if hasattr(sys, "_MEIPASS"):
+        base_path = sys._MEIPASS
+    else:
+        # When running from source
+        base_path = os.path.dirname(__file__)
+    return os.path.join(base_path, relative_path)
+
+icon_file = resource_path("ressources/marker_icon.png")
 
 def normalize_decimal(text : str) -> float | None :
     try :
@@ -721,7 +735,7 @@ class App(CTk) :
                 add = "+"
             )
         
-        self.marker_icon = PhotoImage(file=MARKER_ICON_PATH)
+        self.marker_icon = PhotoImage(file=icon_file)
         
         self.lock_button = canvas_button.CanvasButton(
             self.map_widget,
