@@ -162,3 +162,43 @@ def fetch_alti(bbox, pas_metre = 5, cancel_event=None) :
     
     
     return gdf[["geometry","z"]]
+
+def get_address_alti(lon:float, lat:float) -> float :
+    
+    params = {
+        "format" : "json",
+        "lon": str(lon),
+        "lat": str(lat),
+        "resource": "ign_lidar_hd_mnt_mono_wld",
+        "delimiter": ";",
+        "indent": "true",
+        "measure" : "false",
+        "zonly" : "false"
+        }
+    
+    r = session.get(ALTI_URL, params=params, timeout=TIMEOUT)
+    r.raise_for_status()
+    
+    data = r.json()
+    
+    if data.get("elevations").get("z", -99999.0) == -99999.0 :
+        params = {
+            "format" : "json",
+            "lon": str(lon),
+            "lat": str(lat),
+            "resource": "ign_rge_alti_wld",
+            "delimiter": ";",
+            "indent": "true",
+            "measure" : "false",
+            "zonly" : "false"
+            }
+        
+        r = session.get(ALTI_URL, params=params, timeout=TIMEOUT)
+        r.raise_for_status()
+        
+        data = r.json() 
+    
+    if data is not None :
+        return data.get("elevations").get("z", None)
+
+    return None

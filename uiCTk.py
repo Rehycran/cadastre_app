@@ -18,7 +18,7 @@ import requests
 from .config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
 from .geocode import geocode, autocomplete, Address, inverse_geocode
 from .crsmap import epsg_from_postcode
-from .wfs import fetch_layer, fetch_alti
+from .wfs import fetch_layer, fetch_alti, get_address_alti
 from .dxfwriter import create_dxf
 
 
@@ -567,7 +567,6 @@ class App(CTk) :
         
     def http_error_feedback(self, error = "") :
         fulltext = error
-        textlist=[]
         if len(fulltext) > 45 :
             text_block = "\n".join(fulltext[i:i+45] for i in range(0, len(fulltext), 45))
         else :
@@ -628,12 +627,15 @@ class App(CTk) :
                 else :
                     alti_pts = None
                 
+                address_alti = get_address_alti(self.lon, self.lat)
+                
                 create_dxf(
                     out_path=file_path,
                     bbox_polygon=bbox_polygon,
                     gdf_dict=gdf_dict,
                     gdf_alti=alti_pts,
                     address= self.selected_addr,
+                    address_alti=address_alti,
                     point_alti=self.points_alti.get(),
                     cancel_event=self.cancel_event
                     )

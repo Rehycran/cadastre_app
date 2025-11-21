@@ -52,7 +52,8 @@ def create_dxf(
     out_path,
     bbox_polygon,
     gdf_dict, gdf_alti=None,
-    address=None, point_alti=True,
+    address=None, address_alti=None,
+    point_alti=True,
     cancel_event=None
     ):
 
@@ -69,8 +70,11 @@ def create_dxf(
 
     doc.header["$INSUNITS"] = 6 #meters
     doc.header["$MEASUREMENT"] = 1 #metric system
+    if address_alti is not None :
+        doc.header["$USERR1"] = address_alti
     
     if "cadastre_app" not in doc.appids: doc.appids.add("cadastre_app")
+
     
     for (layer_name, gdf_geom) ,kelly_rgb in zip(gdf_dict.items(), KELLY_COLOR.values()):
         try :
