@@ -11,11 +11,12 @@ from math import ceil
 import re
 import threading
 import os 
+import sys
 from pathlib import Path
 import requests
 
 
-from cadastre_app.config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, MARKER_ICON_PATH, WFS_LAYERS
+from cadastre_app.config import TEXT_FONT, HEADER_FONT, BUTTON_FONT, ENTRY_FONT, DEFAULT_CRS, DEFAULT_STEP, INFO_FONT, WFS_LAYERS
 from cadastre_app.geocode import geocode, autocomplete, Address, inverse_geocode
 from cadastre_app.crsmap import epsg_from_postcode
 from cadastre_app.wfs import fetch_layer, fetch_alti, get_address_alti
@@ -108,6 +109,8 @@ class App(CTk) :
         self.geometry(f'1400x900+{int(self.winfo_screenwidth()/2-700)}+{int(self.winfo_screenheight()/2-450)}')
         self.title("Import parcelle et bati3D")
         self.minsize(750,500)
+        ico = str(Path(resource_path("ressources/open_data_context_icon.ico")).resolve())
+        self.wm_iconbitmap(ico)
         
         #cancellation event init
         self.cancel_event = None
